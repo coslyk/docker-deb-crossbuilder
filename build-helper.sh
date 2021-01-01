@@ -16,11 +16,44 @@ mkdir -p /build
 cp -a /source-ro /build/source
 cd /build/source
 
+
+# Cross build?
+if [ -n "${CROSS_TRIPLE}" ]; then
+
+    case "${CROSS_TRIPLE}" in
+        i686-linux-gnu)
+            CROSS_ARGS="--host-arch i386"
+            ;;
+        arm-linux-gnueabihf)
+            CROSS_ARGS="--host-arch armhf"
+            ;;
+        aarch64-linux-gnu)
+            CROSS_ARGS="--host-arch arm64"
+            ;;
+        mipsel-linux-gnu)
+            CROSS_ARGS="--host-arch mipsel"
+            ;;
+        mips64el-linux-gnuabi64)
+            CROSS_ARGS="--host-arch mips64el"
+            ;;
+        powerpc64le-linux-gnu)
+            CROSS_ARGS="--host-arch ppc64el"
+            ;;
+        *)
+            echo "${CROSS_TRIPLE} not yet implemented." && exit 1 ;;
+    esac
+fi
+
 # Install build dependencies
-mk-build-deps -ir -t "apt-get -o Debug::pkgProblemResolver=yes -y --no-install-recommends"
+apt-get update
+printf "Installing dependencies "
+mk-build-deps $CROSS_ARGS -ir -t "apt-get -o Debug::pkgProblemResolver=yes -y --no-install-recommends" | while read LINE; do
+    printf "."
+done
+printf "\n"
 
 # Build packages
-debuild -b -uc -us
+dpkg-buildpackage -b -uc -us $CROSS_ARGS
 
 # Copy packages to output dir with user's permissions
 chown -R $USER:$GROUP /build
